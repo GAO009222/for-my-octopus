@@ -8,6 +8,9 @@
     · photos     照片文件名列表，把图片和本文件放同一文件夹，
                  例如 photos: ["1.jpg", "2.jpg"]，留空则显示贴照片占位
     · loveNotes  戳章鱼时出现的情话，随便增删
+    · supabaseUrl / supabaseAnonKey  在线照片上传 + 留言墙（可选），
+      在 supabase.com 免费建好项目后填入，两行都填才生效
+    · uploadPasscode  上传照片的口令（防陌生人乱传），留空则不设防
   天气数据来自 open-meteo.com（免费、无需密钥），联网时自动更新。
   ══════════════════════════════════════════════════════════
 -->
@@ -282,6 +285,46 @@
   .poke-note.show{opacity:1;transform:none}
   .poke-tip{font-size:12px;color:var(--muted);letter-spacing:.14em;margin-top:6px}
 
+  /* ─────────── 上传卡片 ─────────── */
+  .upload-card{cursor:pointer;border:2px dashed rgba(16,24,43,.30)}
+  .upload-card .ph-img{background:linear-gradient(150deg,#FFE3D0,#FFD1DC)}
+  .upload-card:hover,.upload-card:focus-visible{transform:rotate(0deg) translateY(-4px)}
+
+  /* ─────────── 留言墙 ─────────── */
+  .wall-form{max-width:560px;margin:0 auto;display:grid;gap:10px}
+  .wall-form input,.wall-form textarea{
+    width:100%;background:rgba(255,246,234,.06);
+    border:1px solid var(--faint);border-radius:14px;
+    padding:12px 14px;color:var(--cream);font:inherit;font-size:16px;
+  }
+  .wall-form ::placeholder{color:rgba(255,246,234,.40)}
+  .wall-form textarea{min-height:96px;resize:vertical}
+  .wall-foot{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  #wallCount{font-family:var(--font-mono);font-size:11px;color:var(--muted)}
+  #wallBtn{
+    border:none;cursor:pointer;font:inherit;font-size:14px;letter-spacing:.1em;
+    color:#10182B;background:var(--octo);padding:10px 24px;border-radius:999px;font-weight:700;
+    -webkit-tap-highlight-color:transparent;
+  }
+  #wallBtn:hover{filter:brightness(1.08)}
+  #wallBtn:disabled{opacity:.55;cursor:default}
+  .wall-status{max-width:560px;margin:12px auto 0;font-size:12.5px;color:var(--heart);min-height:18px;text-align:center}
+  .wall-list{max-width:560px;margin:26px auto 0;display:grid;gap:14px}
+  .wall-note{
+    background:var(--cream);color:rgba(16,24,43,.92);
+    border-radius:4px;padding:14px 16px 12px;
+    box-shadow:0 8px 22px rgba(0,0,0,.35);
+    transform:rotate(var(--tilt,.6deg));
+  }
+  .wall-list > :nth-child(odd){--tilt:-.7deg}
+  .wall-note-head{
+    display:flex;justify-content:space-between;gap:10px;
+    font-size:11px;font-family:var(--font-mono);
+    color:rgba(16,24,43,.55);letter-spacing:.06em;
+  }
+  .wall-note-text{margin-top:6px;font-size:14.5px;line-height:1.65;word-break:break-word}
+  .wall-empty{text-align:center;color:var(--muted);font-size:13px;letter-spacing:.1em}
+
   /* ─────────── 页脚 ─────────── */
   footer{
     text-align:center;padding:70px 20px calc(46px + env(safe-area-inset-bottom));
@@ -413,6 +456,23 @@
     <p class="poke-note" id="pokeNote" role="status" aria-live="polite"></p>
     <p class="poke-tip">戳它一下试试</p>
   </section>
+
+  <section class="reveal" id="wallSection" hidden>
+    <div class="sec-head">
+      <p class="eyebrow">WALL · 留言墙</p>
+      <h2>想说的话，随手贴在这里</h2>
+    </div>
+    <form class="wall-form" id="wallForm">
+      <input id="wallName" maxlength="12" placeholder="怎么称呼（可留空）" autocomplete="off">
+      <textarea id="wallText" maxlength="200" required placeholder="写一句话贴在墙上…（Ctrl+Enter 直接发）"></textarea>
+      <div class="wall-foot">
+        <span id="wallCount">0/200</span>
+        <button type="submit" id="wallBtn">贴上去</button>
+      </div>
+    </form>
+    <p class="wall-status" id="wallStatus" aria-live="polite"></p>
+    <div class="wall-list" id="wallList"><p class="wall-empty">加载中…</p></div>
+  </section>
 </main>
 
 <footer>
@@ -442,11 +502,72 @@ const CONFIG = {
     "把湛江的海风打包，下次见面带来给你。",
     "莫斯科的雪很浪漫，但不及你回头看我的样子。",
     "别怕黑夜长，我这边天亮了就讲给你听。"
-  ]
+  ],
+  /* ── 在线功能（可选）：Supabase 建好项目后把两行都填上即可 ── */
+  supabaseUrl: "",         // 项目 URL，形如 https://xxxx.supabase.co
+  supabaseAnonKey: "",     // Project Settings → API → anon public
+  uploadPasscode: "0610"   // 上传照片的口令，留空则不设防
 };
 const OCTO = "data:image/png;base64,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";
 const OCTO_IMG = `<img class="octo" src="${OCTO}" alt="🐙">`;
 document.querySelectorAll("img[data-octo]").forEach(el => el.src = OCTO);
+
+/* ── 云端能力（Supabase，可选；未配置时所有在线功能自动隐藏） ── */
+const sbUrl = () => CONFIG.supabaseUrl.replace(/\/+$/, "");
+const SB = {
+  get ready(){ return Boolean(CONFIG.supabaseUrl && CONFIG.supabaseAnonKey); },
+  headers(extra = {}){
+    return { apikey: CONFIG.supabaseAnonKey, Authorization: `Bearer ${CONFIG.supabaseAnonKey}`, ...extra };
+  },
+  async listMessages(){
+    const r = await fetch(`${sbUrl()}/rest/v1/messages?select=id,name,text,created_at&order=created_at.desc&limit=100`, { headers: this.headers() });
+    if (!r.ok) throw new Error("messages " + r.status);
+    return r.json();
+  },
+  async addMessage(name, text){
+    const r = await fetch(`${sbUrl()}/rest/v1/messages`, {
+      method: "POST",
+      headers: this.headers({ "Content-Type": "application/json", Prefer: "return=minimal" }),
+      body: JSON.stringify({ name: name || "匿名", text })
+    });
+    if (!r.ok) throw new Error("message insert " + r.status);
+  },
+  async listPhotos(){
+    const r = await fetch(`${sbUrl()}/rest/v1/photos?select=id,url,note,created_at&order=created_at.desc&limit=60`, { headers: this.headers() });
+    if (!r.ok) throw new Error("photos " + r.status);
+    return r.json();
+  },
+  async uploadPhoto(file, note){
+    const blob = await compressImage(file);
+    const key = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
+    const up = await fetch(`${sbUrl()}/storage/v1/object/lovephotos/${key}`, {
+      method: "POST",
+      headers: this.headers({ "Content-Type": "image/jpeg", "x-upsert": "true" }),
+      body: blob
+    });
+    if (!up.ok) throw new Error("photo upload " + up.status);
+    const url = `${sbUrl()}/storage/v1/object/public/lovephotos/${key}`;
+    const meta = await fetch(`${sbUrl()}/rest/v1/photos`, {
+      method: "POST",
+      headers: this.headers({ "Content-Type": "application/json", Prefer: "return=minimal" }),
+      body: JSON.stringify({ url, note: note || "" })
+    });
+    if (!meta.ok) throw new Error("photo meta " + meta.status);
+    return url;
+  }
+};
+async function compressImage(file){
+  try {
+    const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
+    const scale = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+    const c = document.createElement("canvas");
+    c.width = Math.round(bmp.width * scale);
+    c.height = Math.round(bmp.height * scale);
+    c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+    const blob = await new Promise(res => c.toBlob(res, "image/jpeg", 0.85));
+    return blob || file;
+  } catch { return file; }
+}
 /* ══════════════════════ 以下不用动 ══════════════════════ */
 
 const $ = id => document.getElementById(id);
@@ -657,34 +778,106 @@ Promise.all([
   $("careMsg").textContent = "天气暂时连不上，但想你这件事永远在线。";
 });
 
-/* ── 照片墙 ── */
+/* ── 照片墙（配置 Supabase 后支持在线上传） ── */
 const PLACEHOLDER = [
   ["🌇","渐变与晚霞"], ["🍜","一起吃过的"], ["🐻","抱抱库存"], ["🚲","走过的路"], ["❄️","莫斯科的雪"], ["🎵","循环的情歌"],
 ];
+const HUES = [200, 25, 340, 150, 220, 275];
 const gallery = $("gallery");
-if (CONFIG.photos.length){
-  CONFIG.photos.forEach((src, i) => {
-    const cap = CONFIG.photoCaptions[i] || `第 ${i + 1} 张`;
-    gallery.insertAdjacentHTML("beforeend",
-      `<figure class="polaroid" style="--tilt:${(i % 2 ? 1 : -1) * (2 + (i % 3))}deg;--drop:${(i % 3) * 8}px">
-         <div class="ph-img"><img src="${src}" alt="${cap}" loading="lazy"></div>
-         <figcaption class="ph-cap">${cap}</figcaption>
-       </figure>`);
-  });
-  $("galleryHint").textContent = "轻触可放平看清楚";
-} else {
-  PLACEHOLDER.forEach(([emoji, cap], i) => {
-    const hue = [200, 25, 340, 150, 220, 275][i];
-    gallery.insertAdjacentHTML("beforeend",
-      `<figure class="polaroid" style="--tilt:${(i % 2 ? 1 : -1) * (2 + (i % 3))}deg;--drop:${(i % 3) * 8}px">
-         <div class="ph-img" style="background:linear-gradient(160deg,hsl(${hue} 45% 72%),hsl(${hue + 30} 40% 88%))">
-           <span class="ph-emoji">${emoji}</span>
-         </div>
-         <figcaption class="ph-cap">${cap} · 贴照片处</figcaption>
-       </figure>`);
-  });
-  $("galleryHint").textContent = "把照片文件放进同一文件夹，在 CONFIG 里填上文件名就能贴上来";
+const fmtDay = iso => (iso || "").slice(0, 10).replaceAll("-", ".");
+let cloudPhotos = [];
+
+function polaroidStyle(fig, i){
+  fig.style.setProperty("--tilt", `${(i % 2 ? 1 : -1) * (2 + (i % 3))}deg`);
+  fig.style.setProperty("--drop", `${(i % 3) * 8}px`);
 }
+function renderGallery(){
+  gallery.innerHTML = "";
+  const items = cloudPhotos.map(p => ({ url: p.url, cap: p.note || fmtDay(p.created_at) }));
+  CONFIG.photos.forEach((src, i) => items.push({ url: src, cap: CONFIG.photoCaptions[i] || `第 ${i + 1} 张` }));
+
+  if (!items.length){
+    PLACEHOLDER.forEach(([emoji, cap], i) => {
+      const fig = document.createElement("figure");
+      fig.className = "polaroid"; polaroidStyle(fig, i);
+      const box = document.createElement("div"); box.className = "ph-img";
+      box.style.background = `linear-gradient(160deg,hsl(${HUES[i]} 45% 72%),hsl(${HUES[i] + 30} 40% 88%))`;
+      const em = document.createElement("span"); em.className = "ph-emoji"; em.textContent = emoji;
+      box.appendChild(em);
+      const fc = document.createElement("figcaption"); fc.className = "ph-cap"; fc.textContent = `${cap} · 贴照片处`;
+      fig.append(box, fc);
+      gallery.appendChild(fig);
+    });
+    $("galleryHint").textContent = SB.ready ? "还没有云相册照片，点粉色卡片贴第一张" : "把照片文件放进同一文件夹，在 CONFIG 里填上文件名就能贴上来";
+  } else {
+    items.forEach((it, i) => {
+      const fig = document.createElement("figure");
+      fig.className = "polaroid"; polaroidStyle(fig, i);
+      const img = document.createElement("img");
+      img.src = it.url; img.alt = it.cap; img.loading = "lazy";
+      const box = document.createElement("div"); box.className = "ph-img"; box.appendChild(img);
+      const fc = document.createElement("figcaption"); fc.className = "ph-cap"; fc.textContent = it.cap;
+      fig.append(box, fc);
+      gallery.appendChild(fig);
+    });
+    $("galleryHint").textContent = SB.ready ? "点最后一张粉色卡片，手机里的照片直接贴上来" : "轻触可放平看清楚";
+  }
+  if (SB.ready) gallery.appendChild(makeUploadCard());
+}
+function makeUploadCard(){
+  const fig = document.createElement("figure");
+  fig.className = "polaroid upload-card";
+  fig.setAttribute("role", "button");
+  fig.setAttribute("tabindex", "0");
+  fig.setAttribute("aria-label", "上传照片");
+  const box = document.createElement("div"); box.className = "ph-img";
+  const em = document.createElement("span"); em.className = "ph-emoji"; em.textContent = "📷";
+  box.appendChild(em);
+  const fc = document.createElement("figcaption"); fc.className = "ph-cap"; fc.id = "uploadCap"; fc.textContent = "上传我们的照片";
+  fig.append(box, fc);
+  fig.addEventListener("click", startUpload);
+  fig.addEventListener("keydown", e => { if (e.key === "Enter") startUpload(); });
+  return fig;
+}
+function ensureUnlocked(){
+  if (!CONFIG.uploadPasscode || sessionStorage.getItem("octoUnlocked") === "1") return Promise.resolve(true);
+  const v = prompt("输入上传口令");
+  if (v === null) return Promise.resolve(false);
+  if (v !== CONFIG.uploadPasscode){ alert("口令不对哦"); return Promise.resolve(false); }
+  sessionStorage.setItem("octoUnlocked", "1");
+  return Promise.resolve(true);
+}
+let filePicker = null;
+async function startUpload(){
+  if (!(await ensureUnlocked())) return;
+  if (!filePicker){
+    filePicker = document.createElement("input");
+    filePicker.type = "file"; filePicker.accept = "image/*"; filePicker.multiple = true;
+    filePicker.style.display = "none";
+    filePicker.addEventListener("change", () => handleFiles(filePicker.files));
+    document.body.appendChild(filePicker);
+  }
+  filePicker.value = "";
+  filePicker.click();
+}
+async function handleFiles(files){
+  if (!files || !files.length) return;
+  const cap = $("uploadCap");
+  const note = prompt("给这批照片写一句小字（可留空）") || "";
+  try {
+    for (let i = 0; i < files.length; i++){
+      cap.textContent = `上传中 ${i + 1}/${files.length}…`;
+      const url = await SB.uploadPhoto(files[i], note);
+      cloudPhotos.unshift({ url, note, created_at: new Date().toISOString() });
+    }
+    renderGallery();
+  } catch (e){
+    alert("上传失败了，网络正常的话再试一次");
+    cap.textContent = "上传我们的照片";
+  }
+}
+renderGallery();
+if (SB.ready) SB.listPhotos().then(list => { cloudPhotos = list; renderGallery(); }).catch(() => {});
 
 /* ── 戳章鱼 ── */
 let lastNote = -1;
@@ -723,6 +916,64 @@ $("hero").addEventListener("click", ev => {
   if (ev.target.closest("a,button")) return;
   burst(ev.clientX, ev.clientY, 6);
 });
+
+/* ── 留言墙（配置 Supabase 后启用） ── */
+{
+  const wallSection = $("wallSection");
+  if (SB.ready){
+    wallSection.hidden = false;
+    const wallList = $("wallList"), wallText = $("wallText"), wallName = $("wallName"),
+          wallBtn = $("wallBtn"), wallCount = $("wallCount"), wallStatus = $("wallStatus");
+    wallText.addEventListener("input", () => { wallCount.textContent = `${wallText.value.length}/200`; });
+    wallText.addEventListener("keydown", e => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") $("wallForm").requestSubmit();
+    });
+    let lastPost = 0, posting = false;
+    const fmtWhen = iso => {
+      const d = new Date(iso);
+      return `${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")} ` +
+             `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    };
+    const noteCard = m => {
+      const card = document.createElement("article"); card.className = "wall-note";
+      const head = document.createElement("div"); head.className = "wall-note-head";
+      const who = document.createElement("span"); who.textContent = m.name || "匿名";
+      const when = document.createElement("time"); when.textContent = fmtWhen(m.created_at);
+      head.append(who, when);
+      const p = document.createElement("p"); p.className = "wall-note-text"; p.textContent = m.text;
+      card.append(head, p);
+      return card;
+    };
+    SB.listMessages().then(list => {
+      wallList.innerHTML = "";
+      if (!list.length){
+        const e = document.createElement("p"); e.className = "wall-empty"; e.textContent = "还没有留言，来贴第一句吧";
+        wallList.appendChild(e);
+        return;
+      }
+      list.forEach(m => wallList.appendChild(noteCard(m)));
+    }).catch(() => { wallStatus.textContent = "留言暂时加载不出来，刷新试试"; });
+
+    $("wallForm").addEventListener("submit", async ev => {
+      ev.preventDefault();
+      const text = wallText.value.trim();
+      if (!text || posting) return;
+      if (Date.now() - lastPost < 8000){ wallStatus.textContent = "发得太快啦，歇几秒再贴"; return; }
+      posting = true; wallBtn.disabled = true; wallBtn.textContent = "贴上去…"; wallStatus.textContent = "";
+      const who = wallName.value.trim().slice(0, 12);
+      try {
+        await SB.addMessage(who, text);
+        wallList.querySelector(".wall-empty")?.remove();
+        wallList.prepend(noteCard({ name: who, text, created_at: new Date().toISOString() }));
+        wallText.value = ""; wallCount.textContent = "0/200";
+        lastPost = Date.now();
+      } catch (e){
+        wallStatus.textContent = "没贴上去，网络正常的话再试一次";
+      }
+      posting = false; wallBtn.disabled = false; wallBtn.textContent = "贴上去";
+    });
+  }
+}
 
 /* ── 滚动浮现 ── */
 if (!reduceMotion && "IntersectionObserver" in window){
