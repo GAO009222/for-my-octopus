@@ -325,6 +325,49 @@
   .wall-note-text{margin-top:6px;font-size:14.5px;line-height:1.65;word-break:break-word}
   .wall-empty{text-align:center;color:var(--muted);font-size:13px;letter-spacing:.1em}
 
+  /* ─────────── 照片灯箱 ─────────── */
+  .polaroid:not(.upload-card){cursor:zoom-in}
+  .lightbox{
+    position:fixed;inset:0;z-index:80;
+    display:grid;place-content:center;justify-items:center;gap:12px;
+    background:rgba(16,24,43,.92);
+    backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+    cursor:zoom-out;padding:20px;
+  }
+  .lightbox[hidden]{display:none}
+  .lightbox img{max-width:92vw;max-height:80vh;border-radius:8px;box-shadow:0 18px 60px rgba(0,0,0,.6)}
+  .lb-cap{font-family:var(--font-mono);font-size:12px;color:var(--cream);letter-spacing:.08em}
+
+  /* ─────────── 她刚刚来过 ─────────── */
+  .seen{
+    margin-top:14px;
+    font-family:var(--font-mono);font-size:11.5px;letter-spacing:.08em;
+    color:rgba(255,246,234,.66);font-variant-numeric:tabular-nums;
+    text-shadow:0 1px 12px rgba(16,24,43,.6);
+  }
+  .who-modal{
+    position:fixed;inset:0;z-index:70;
+    display:grid;place-items:center;
+    background:rgba(16,24,43,.86);
+    padding:20px;
+  }
+  .who-card{
+    background:var(--cream);border-radius:18px;
+    padding:28px 26px 22px;width:min(320px,86vw);text-align:center;
+    box-shadow:0 20px 60px rgba(0,0,0,.5);
+  }
+  .who-card .who-octo{font-size:40px;line-height:1}
+  .who-card h3{font-size:17px;color:#10182B;letter-spacing:.06em;margin-top:10px}
+  .who-card p{font-size:12px;color:rgba(16,24,43,.55);margin-top:4px}
+  .who-btns{display:grid;gap:10px;margin-top:18px}
+  .who-btns button{
+    font:inherit;font-size:15px;cursor:pointer;
+    border:1px solid rgba(16,24,43,.22);border-radius:12px;
+    padding:12px;background:#fff;color:#10182B;
+  }
+  .who-btns button:hover{border-color:var(--octo);background:#FFF6F0}
+  .who-btns .who-skip{border:none;background:none;color:rgba(16,24,43,.45);font-size:12.5px;padding:6px}
+
   /* ─────────── 页脚 ─────────── */
   footer{
     text-align:center;padding:70px 20px calc(46px + env(safe-area-inset-bottom));
@@ -972,6 +1015,115 @@ $("hero").addEventListener("click", ev => {
       }
       posting = false; wallBtn.disabled = false; wallBtn.textContent = "贴上去";
     });
+  }
+}
+
+/* ── 照片灯箱（轻触放大） ── */
+const lightbox = document.createElement("div");
+lightbox.className = "lightbox";
+lightbox.hidden = true;
+lightbox.setAttribute("role", "dialog");
+lightbox.setAttribute("aria-modal", "true");
+lightbox.setAttribute("aria-label", "查看照片");
+lightbox.innerHTML = `<img alt=""><p class="lb-cap"></p>`;
+document.body.appendChild(lightbox);
+function openLightbox(src, cap){
+  lightbox.querySelector("img").src = src;
+  lightbox.querySelector(".lb-cap").textContent = cap;
+  lightbox.hidden = false;
+  document.body.style.overflow = "hidden";
+}
+function closeLightbox(){
+  lightbox.hidden = true;
+  lightbox.querySelector("img").src = "";
+  document.body.style.overflow = "";
+}
+lightbox.addEventListener("click", closeLightbox);
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !lightbox.hidden) closeLightbox(); });
+gallery.addEventListener("click", e => {
+  const card = e.target.closest(".polaroid");
+  if (!card || card.classList.contains("upload-card")) return;
+  const img = card.querySelector("img");
+  if (!img) return;
+  openLightbox(img.src, card.querySelector(".ph-cap")?.textContent || "");
+});
+
+/* ── 她刚刚来过（配置 Supabase 后启用） ── */
+{
+  const seenLine = document.createElement("p");
+  seenLine.className = "seen";
+  $("anniv").after(seenLine);
+
+  const OTHER = { me: "她", her: "他" };
+  const relTime = iso => {
+    const s = (Date.now() - new Date(iso).getTime()) / 1000;
+    if (s < 120) return "刚刚";
+    if (s < 3600) return Math.floor(s / 60) + " 分钟前";
+    if (s < 86400) return Math.floor(s / 3600) + " 小时前";
+    if (s < 172800) return "昨天";
+    const d = new Date(iso);
+    return `${d.getMonth() + 1}.${d.getDate()}`;
+  };
+  async function fetchSeen(){
+    const [her, me, all] = await Promise.all([
+      fetch(`${sbUrl()}/rest/v1/visits?select=created_at&who=eq.her&order=created_at.desc&limit=1`, { headers: SB.headers() }),
+      fetch(`${sbUrl()}/rest/v1/visits?select=created_at&who=eq.me&order=created_at.desc&limit=1`, { headers: SB.headers() }),
+      fetch(`${sbUrl()}/rest/v1/visits?select=id&limit=1`, { headers: SB.headers({ Prefer: "count=exact" }) }),
+    ]);
+    if (!her.ok || !me.ok || !all.ok) throw new Error("visits fetch");
+    const last = { her: (await her.json())[0], me: (await me.json())[0] };
+    const range = all.headers.get("content-range") || "";
+    const total = range.includes("/") ? parseInt(range.split("/")[1], 10) : NaN;
+    return { last, total };
+  }
+  function renderSeen(who, data){
+    const other = data.last[who === "me" ? "her" : "me"];
+    const parts = [];
+    parts.push(other ? `${OTHER[who]} ${relTime(other.created_at)}来过` : `${OTHER[who]}还没来过这个页面，快喊 TA 来`);
+    if (!isNaN(data.total)) parts.push(`被你们打开过 ${data.total} 次`);
+    seenLine.textContent = parts.join(" · ");
+  }
+  function askWho(){
+    return new Promise(resolve => {
+      const ov = document.createElement("div");
+      ov.className = "who-modal";
+      ov.innerHTML = `
+        <div class="who-card" role="dialog" aria-modal="true" aria-label="你是谁">
+          <div class="who-octo">${OCTO_IMG}</div>
+          <h3>第一次见面，你是？</h3>
+          <p>选一个，这个页面会记住这部手机</p>
+          <div class="who-btns">
+            <button type="button" data-who="me">🌊 我在湛江</button>
+            <button type="button" data-who="her">🐙 她在莫斯科</button>
+            <button type="button" class="who-skip">先随便看看</button>
+          </div>
+        </div>`;
+      ov.addEventListener("click", e => {
+        const b = e.target.closest("button");
+        if (!b) return;
+        ov.remove();
+        resolve(b.dataset.who || null);
+      });
+      document.body.appendChild(ov);
+    });
+  }
+  if (SB.ready){
+    (async () => {
+      try {
+        let who = localStorage.getItem("octoWho");
+        if (!who){
+          who = await askWho();
+          if (!who) return;
+          localStorage.setItem("octoWho", who);
+        }
+        await fetch(`${sbUrl()}/rest/v1/visits`, {
+          method: "POST",
+          headers: SB.headers({ "Content-Type": "application/json", Prefer: "return=minimal" }),
+          body: JSON.stringify({ who })
+        });
+        renderSeen(who, await fetchSeen());
+      } catch (e){ /* 静默失败，不打扰 */ }
+    })();
   }
 }
 
