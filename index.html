@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<!--
+  ══════════════════════════════════════════════════════════
+  致我的小章鱼 · 情侣专属页面（单文件，双击即可打开）
+  想修改的话只需要动下面 <script> 里最顶上的 CONFIG：
+    · startDate  在一起的日期（默认 2026-06-10，6月10日算第 1 天）
+    · herName    她的昵称
+    · photos     照片文件名列表，把图片和本文件放同一文件夹，
+                 例如 photos: ["1.jpg", "2.jpg"]，留空则显示贴照片占位
+    · loveNotes  戳章鱼时出现的情话，随便增删
+  天气数据来自 open-meteo.com（免费、无需密钥），联网时自动更新。
+  ══════════════════════════════════════════════════════════
+-->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#10182B">
+<title>致我的小章鱼 🐙</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐙</text></svg>">
+<style>
+  :root{
+    --ink:#10182B;
+    --ink-2:#1A2340;
+    --cream:#FFF6EA;
+    --muted:rgba(255,246,234,.62);
+    --faint:rgba(255,246,234,.14);
+    --sea:#79C0E4;
+    --octo:#FF8A5C;
+    --heart:#FF6B8A;
+    --font-display:Georgia,"Times New Roman",serif;
+    --font-body:-apple-system,BlinkMacSystemFont,"PingFang SC","HarmonyOS Sans SC","Microsoft YaHei","Segoe UI",sans-serif;
+    --font-mono:"SF Mono",ui-monospace,"Cascadia Mono",Consolas,"Courier New",monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:var(--font-body);
+    background:
+      radial-gradient(900px 500px at 8% 30%, rgba(121,192,228,.10), transparent 60%),
+      radial-gradient(900px 600px at 92% 55%, rgba(90,80,170,.14), transparent 60%),
+      var(--ink);
+    color:var(--cream);
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  .mono{font-family:var(--font-mono)}
+  .eyebrow{
+    font-family:var(--font-mono);
+    font-size:11px;letter-spacing:.34em;text-transform:uppercase;
+    color:var(--muted);
+  }
+
+  /* ─────────── 顶部：双城天空 ─────────── */
+  .hero{
+    position:relative;
+    min-height:92svh;
+    display:flex;align-items:flex-end;justify-content:center;
+    overflow:hidden;
+    border-bottom:1px solid var(--faint);
+  }
+  .sky{position:absolute;inset:0;transition:background 1s linear}
+  .sky-zj{ -webkit-mask-image:linear-gradient(90deg,#000 30%,transparent 70%);
+                   mask-image:linear-gradient(90deg,#000 30%,transparent 70%);}
+  .sky-mos{-webkit-mask-image:linear-gradient(90deg,transparent 30%,#000 70%);
+                   mask-image:linear-gradient(90deg,transparent 30%,#000 70%);}
+  #stars{position:absolute;inset:0;width:100%;height:100%}
+  .hero-scrim{
+    position:absolute;inset:0;
+    background:linear-gradient(180deg,rgba(16,24,43,.42),rgba(16,24,43,.10) 42%,rgba(16,24,43,.52));
+  }
+  .hero-inner{
+    position:relative;z-index:2;
+    width:min(640px,100%);
+    padding:0 24px calc(48px + env(safe-area-inset-bottom));
+    text-align:center;
+  }
+  .hero h1{
+    font-size:clamp(34px,9vw,54px);
+    font-weight:800;letter-spacing:.14em;
+    margin:14px 0 6px;
+    text-shadow:0 2px 28px rgba(16,24,43,.55);
+  }
+  .hero .thesis{
+    font-size:15px;letter-spacing:.30em;text-indent:.30em;
+    color:rgba(255,246,234,.86);
+    margin-bottom:34px;
+    text-shadow:0 1px 16px rgba(16,24,43,.6);
+  }
+  .counter{display:flex;align-items:baseline;justify-content:center;gap:14px}
+  .counter-label{
+    font-size:14px;letter-spacing:.2em;color:rgba(255,246,234,.85);
+    text-shadow:0 1px 12px rgba(16,24,43,.6);
+  }
+  .counter-num{
+    font-family:var(--font-display);
+    font-size:clamp(72px,22vw,124px);
+    line-height:1;color:var(--cream);
+    text-shadow:0 4px 36px rgba(16,24,43,.6);
+  }
+  .counter-tail{
+    font-size:clamp(18px,5vw,28px);font-weight:700;
+    color:#FF9DB4;text-shadow:0 1px 12px rgba(16,24,43,.6);
+  }
+  .ticker{
+    margin-top:10px;font-size:13px;letter-spacing:.12em;
+    color:rgba(255,246,234,.75);
+    font-variant-numeric:tabular-nums;
+    text-shadow:0 1px 12px rgba(16,24,43,.6);
+  }
+  .anniv{
+    display:inline-block;margin-top:16px;
+    font-size:12.5px;letter-spacing:.08em;
+    padding:7px 16px;border-radius:999px;
+    color:var(--cream);background:rgba(255,138,92,.20);
+    border:1px solid rgba(255,138,92,.45);
+    backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+  }
+  .hero-cities{
+    display:flex;justify-content:space-between;align-items:center;gap:8px;
+    margin-top:30px;padding-top:16px;
+    border-top:1px solid rgba(255,246,234,.28);
+    font-size:12px;letter-spacing:.06em;
+    color:rgba(255,246,234,.92);
+    font-variant-numeric:tabular-nums;
+    text-shadow:0 1px 12px rgba(16,24,43,.6);
+  }
+  .hero-cities b{font-weight:600;color:#fff}
+  .hero-cities .dist{color:rgba(255,246,234,.66);font-size:11px}
+  @media (max-width:520px){
+    .hero-cities{flex-direction:column;gap:7px}
+  }
+
+  /* ─────────── 通用区块 ─────────── */
+  main{width:min(720px,100%);margin:0 auto;padding:0 20px}
+  section{padding:64px 0 8px}
+  .sec-head{margin-bottom:26px}
+  .sec-head h2{
+    font-size:21px;font-weight:700;letter-spacing:.1em;margin-top:8px;
+  }
+
+  /* ─────────── 两城天气 ─────────── */
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media (max-width:520px){.cards{grid-template-columns:1fr}}
+  .card{
+    position:relative;
+    background:linear-gradient(180deg,rgba(255,246,234,.075),rgba(255,246,234,.035));
+    border:1px solid var(--faint);
+    border-radius:22px;
+    padding:20px 20px 18px;
+    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    transition:transform .35s ease,border-color .35s ease;
+  }
+  .card:hover{transform:translateY(-3px)}
+  .card-her{border-color:rgba(255,138,92,.40)}
+  .card-top{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
+  .card-city{font-size:17px;font-weight:700;letter-spacing:.06em}
+  .card-en{font-family:var(--font-mono);font-size:10px;letter-spacing:.22em;color:var(--muted)}
+  .card-tag{
+    font-size:11px;letter-spacing:.05em;white-space:nowrap;
+    color:var(--cream);background:rgba(255,246,234,.10);
+    border:1px solid var(--faint);
+    padding:4px 10px;border-radius:999px;
+  }
+  .card-her .card-tag{background:rgba(255,138,92,.18);border-color:rgba(255,138,92,.45)}
+  .card-now{display:flex;align-items:center;gap:12px;margin:16px 0 4px}
+  .card-wx-emoji{font-size:40px;line-height:1}
+  .card-temp{
+    font-family:var(--font-display);
+    font-size:44px;line-height:1;font-variant-numeric:tabular-nums;
+  }
+  .card-temp small{font-size:20px;color:var(--muted)}
+  .card-wx-text{font-size:13px;color:var(--muted);margin-top:4px}
+  .card-clock{
+    font-family:var(--font-mono);font-size:13px;letter-spacing:.1em;
+    font-variant-numeric:tabular-nums;color:var(--cream);
+    margin-bottom:14px;
+  }
+  .card-clock .dot{color:var(--octo)}
+  .card-stats{
+    display:flex;gap:12px;flex-wrap:wrap;
+    font-size:11.5px;color:var(--muted);
+    padding:10px 0;border-top:1px dashed var(--faint);
+  }
+  .card-forecast{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:6px;
+    margin-top:12px;
+  }
+  .fc{ text-align:center;padding:10px 4px;border-radius:14px;
+       background:rgba(255,246,234,.045)}
+  .fc-day{font-size:11px;color:var(--muted);letter-spacing:.1em}
+  .fc-emoji{font-size:19px;margin:4px 0 2px}
+  .fc-temp{font-family:var(--font-mono);font-size:11.5px;font-variant-numeric:tabular-nums}
+  .fc-temp .lo{color:var(--muted)}
+  .octo-badge{
+    position:absolute;top:-16px;right:14px;
+    width:44px;height:44px;border-radius:50%;
+    display:grid;place-items:center;font-size:23px;
+    background:var(--cream);
+    box-shadow:0 4px 14px rgba(0,0,0,.35);
+    transform:rotate(8deg);
+    animation:floaty 3.4s ease-in-out infinite;
+  }
+  @keyframes floaty{0%,100%{transform:rotate(8deg) translateY(0)}50%{transform:rotate(2deg) translateY(-5px)}}
+  .care{
+    margin-top:18px;padding:14px 18px;
+    border-left:3px solid var(--heart);
+    background:rgba(255,107,138,.08);
+    border-radius:0 14px 14px 0;
+    font-size:13.5px;color:rgba(255,246,234,.9);
+  }
+
+  /* ─────────── 照片墙 ─────────── */
+  .gallery{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    justify-content:center;gap:26px 22px;padding:8px 0 10px;
+  }
+  .polaroid{
+    width:100%;max-width:172px;justify-self:center;
+    background:var(--cream);
+    border-radius:6px;padding:9px 9px 12px;
+    box-shadow:0 10px 26px rgba(0,0,0,.4);
+    transform:rotate(var(--tilt)) translateY(var(--drop));
+    transition:transform .35s ease;
+  }
+  .polaroid:hover{transform:rotate(0deg) translateY(calc(var(--drop) - 5px)) scale(1.04);z-index:2}
+  .polaroid::before{
+    content:"";position:absolute;left:50%;top:-9px;width:56px;height:18px;
+    transform:translateX(-50%) rotate(-2deg);
+    background:rgba(255,246,234,.32);
+    border-left:1px dashed rgba(16,24,43,.18);
+    border-right:1px dashed rgba(16,24,43,.18);
+  }
+  .polaroid{position:relative}
+  .ph-img{
+    aspect-ratio:1/1.02;border-radius:3px;overflow:hidden;
+    display:grid;place-items:center;
+  }
+  .ph-img img{width:100%;height:100%;object-fit:cover}
+  .ph-emoji{font-size:34px;opacity:.9;filter:saturate(.9)}
+  .ph-cap{
+    font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;
+    color:rgba(16,24,43,.62);text-align:center;margin-top:9px;
+  }
+  .gallery-hint{
+    text-align:center;font-size:12px;color:var(--muted);
+    letter-spacing:.08em;margin-top:26px;
+  }
+
+  /* ─────────── 戳章鱼 ─────────── */
+  .poke{text-align:center}
+  .poke-btn{
+    width:118px;height:118px;border-radius:50%;
+    border:1px solid rgba(255,138,92,.5);
+    background:radial-gradient(circle at 32% 28%,rgba(255,138,92,.28),rgba(255,138,92,.07));
+    font-size:62px;line-height:1;cursor:pointer;
+    display:grid;place-items:center;margin:26px auto 0;
+    transition:transform .2s ease;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .poke-btn:hover{transform:scale(1.06)}
+  .poke-btn:active{transform:scale(.92)}
+  .poke-btn.wiggle{animation:wiggle .55s ease}
+  @keyframes wiggle{
+    0%,100%{transform:rotate(0)}
+    20%{transform:rotate(-14deg) scale(1.08)}
+    45%{transform:rotate(12deg) scale(1.1)}
+    70%{transform:rotate(-7deg) scale(1.04)}
+  }
+  .poke-note{
+    min-height:58px;margin:24px auto 0;max-width:460px;
+    font-size:16px;letter-spacing:.05em;
+    color:var(--cream);
+    opacity:0;transform:translateY(8px);
+    transition:opacity .5s ease,transform .5s ease;
+  }
+  .poke-note.show{opacity:1;transform:none}
+  .poke-tip{font-size:12px;color:var(--muted);letter-spacing:.14em;margin-top:6px}
+
+  /* ─────────── 页脚 ─────────── */
+  footer{
+    text-align:center;padding:70px 20px calc(46px + env(safe-area-inset-bottom));
+  }
+  footer .line{font-size:14px;letter-spacing:.18em;color:rgba(255,246,234,.85)}
+  footer .sub{
+    font-family:var(--font-mono);font-size:11px;letter-spacing:.2em;
+    color:var(--muted);margin-top:12px;
+  }
+  .divider{width:44px;height:1px;background:rgba(255,246,234,.3);margin:0 auto 22px}
+
+  /* ─────────── 心动粒子 ─────────── */
+  .heart{
+    position:fixed;z-index:60;pointer-events:none;
+    font-size:var(--s,18px);
+    animation:rise .95s ease-out forwards;
+  }
+  @keyframes rise{
+    0%{transform:translate(0,0) scale(1);opacity:1}
+    100%{transform:translate(var(--dx,0),-110px) scale(.5);opacity:0}
+  }
+
+  /* ─────────── 滚动浮现 ─────────── */
+  .reveal{opacity:0;transform:translateY(20px);transition:opacity .7s ease,transform .7s ease}
+  .reveal.in{opacity:1;transform:none}
+
+  :focus-visible{outline:2px solid var(--octo);outline-offset:3px;border-radius:6px}
+
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation:none!important;transition:none!important}
+    .reveal{opacity:1;transform:none}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero" id="hero">
+  <div class="sky sky-zj" id="skyZj"></div>
+  <div class="sky sky-mos" id="skyMos"></div>
+  <canvas id="stars" aria-hidden="true"></canvas>
+  <div class="hero-scrim"></div>
+  <div class="hero-inner">
+    <p class="eyebrow" id="estLine">EST. 2026.06.10</p>
+    <h1>致我的<span id="herTitle">小章鱼</span> 🐙</h1>
+    <p class="thesis">两个时区，一个宇宙</p>
+    <div class="counter" role="text" aria-label="在一起天数">
+      <span class="counter-label">在一起的</span>
+      <span class="counter-num" id="dayCount">—</span>
+      <span class="counter-label counter-tail">天</span>
+    </div>
+    <p class="ticker mono" id="ticker">&nbsp;</p>
+    <p class="anniv" id="anniv"></p>
+    <div class="hero-cities mono">
+      <span>湛江 · 我在这 <b id="zjClock">--:--:--</b></span>
+      <span class="dist" id="dist"></span>
+      <span><b id="mosClock">--:--:--</b> 她在这 🐙</span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="reveal">
+    <div class="sec-head">
+      <p class="eyebrow">TWO SKIES · 两城天气</p>
+      <h2>你在莫斯科，我在湛江</h2>
+    </div>
+    <div class="cards">
+      <article class="card" id="cardZj" aria-label="湛江天气">
+        <div class="card-top">
+          <div><div class="card-city">湛江</div><div class="card-en">ZHANJIANG</div></div>
+          <span class="card-tag">我在这</span>
+        </div>
+        <div class="card-now">
+          <span class="card-wx-emoji" id="zjEmoji">⏳</span>
+          <div>
+            <div class="card-temp"><span id="zjTemp">--</span><small>°C</small></div>
+            <div class="card-wx-text" id="zjText">天气获取中…</div>
+          </div>
+        </div>
+        <div class="card-clock">当地时间 <span class="dot">●</span> <span id="zjClock2">--:--:--</span></div>
+        <div class="card-stats">
+          <span>体感 <b id="zjFeels">--</b>°</span>
+          <span>湿度 <b id="zjHum">--</b>%</span>
+          <span>风 <b id="zjWind">--</b>km/h</span>
+        </div>
+        <div class="card-forecast" id="zjFc"></div>
+      </article>
+
+      <article class="card card-her" id="cardMos" aria-label="莫斯科天气">
+        <div class="octo-badge" aria-hidden="true">🐙</div>
+        <div class="card-top">
+          <div><div class="card-city">莫斯科</div><div class="card-en">MOSCOW</div></div>
+          <span class="card-tag">她在这 🐙</span>
+        </div>
+        <div class="card-now">
+          <span class="card-wx-emoji" id="mosEmoji">⏳</span>
+          <div>
+            <div class="card-temp"><span id="mosTemp">--</span><small>°C</small></div>
+            <div class="card-wx-text" id="mosText">天气获取中…</div>
+          </div>
+        </div>
+        <div class="card-clock">当地时间 <span class="dot">●</span> <span id="mosClock2">--:--:--</span></div>
+        <div class="card-stats">
+          <span>体感 <b id="mosFeels">--</b>°</span>
+          <span>湿度 <b id="mosHum">--</b>%</span>
+          <span>风 <b id="mosWind">--</b>km/h</span>
+        </div>
+        <div class="card-forecast" id="mosFc"></div>
+      </article>
+    </div>
+    <p class="care" id="careMsg">正在把两座城市的天气接在一起…</p>
+  </section>
+
+  <section class="reveal">
+    <div class="sec-head">
+      <p class="eyebrow">MEMORY · 照片墙</p>
+      <h2>我们收集过的时间</h2>
+    </div>
+    <div class="gallery" id="gallery"></div>
+    <p class="gallery-hint" id="galleryHint"></p>
+  </section>
+
+  <section class="poke reveal">
+    <div class="sec-head">
+      <p class="eyebrow">POKE · 戳一戳</p>
+      <h2>这只章鱼替我守着你</h2>
+    </div>
+    <button class="poke-btn" id="pokeBtn" aria-label="戳一戳章鱼，出现一句话">🐙</button>
+    <p class="poke-note" id="pokeNote" role="status" aria-live="polite"></p>
+    <p class="poke-tip">戳它一下试试</p>
+  </section>
+</main>
+
+<footer>
+  <div class="divider"></div>
+  <p class="line">自 <span id="footDate">2026.06.10</span> 起 · 这个宇宙围绕她展开 🐙</p>
+  <p class="sub" id="footSub"></p>
+</footer>
+
+<script>
+/* ══════════════════ CONFIG：想改就改这里 ══════════════════ */
+const CONFIG = {
+  startDate: "2026-06-10",          // 在一起的日期，6月10日按第 1 天算
+  herName: "小章鱼",                 // 她的昵称
+  myCity:  { name:"湛江",   en:"ZHANJIANG", lat:21.2707, lon:110.3594, tz:"Asia/Shanghai",  tag:"我在这" },
+  herCity: { name:"莫斯科", en:"MOSCOW",    lat:55.7558, lon:37.6173, tz:"Europe/Moscow",  tag:"她在这 🐙" },
+  // 照片：把图片文件和本 html 放同一文件夹，填文件名，例如 ["1.jpg","2.jpg"]
+  photos: [],
+  photoCaptions: [],                 // 每张照片下面的小字，例如 ["第一次见面","跨年夜"]
+  loveNotes: [
+    "章鱼有三颗心脏，其中一颗一直放在你那里。🐙",
+    "相隔 7000 多公里，想你这件事零延迟。",
+    "我说晚安的时候，你要替我把早安也说掉。",
+    "今天也很喜欢你，比昨天多一点点。",
+    "等见面那天，把攒起来的拥抱一次性花光。",
+    "你是我宇宙的中心，其他星星都是背景板。",
+    "时差 5 小时，喜欢你的时间从来不打烊。",
+    "把湛江的海风打包，下次见面带来给你。",
+    "莫斯科的雪很浪漫，但不及你回头看我的样子。",
+    "别怕黑夜长，我这边天亮了就讲给你听。"
+  ]
+};
+/* ══════════════════════ 以下不用动 ══════════════════════ */
+
+const $ = id => document.getElementById(id);
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ── 日期与计时 ── */
+const [sy, sm, sd] = CONFIG.startDate.split("-").map(Number);
+const start = new Date(sy, sm - 1, sd);
+$("estLine").textContent = "EST. " + CONFIG.startDate.replace(/-/g, ".");
+$("footDate").textContent = CONFIG.startDate.replace(/-/g, ".");
+
+function tickCounter(){
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const days = Math.floor((today - start) / 86400000) + 1;
+  $("dayCount").textContent = days;
+
+  let e = Math.max(0, now - start) / 1000 | 0;
+  const dd = e / 86400 | 0; e %= 86400;
+  const hh = e / 3600 | 0;  e %= 3600;
+  const mm = e / 60 | 0;    const ss = e % 60;
+  $("ticker").textContent =
+    `已经一起 ${dd} 天 ${String(hh).padStart(2,"0")} 小时 ${String(mm).padStart(2,"0")} 分 ${String(ss).padStart(2,"0")} 秒`;
+
+  const y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
+  const todayMid = new Date(y, m, d);
+  let ty = y, tm = m;
+  let target = new Date(ty, tm, sd);
+  if (target.getTime() === todayMid.getTime()){
+    const months = (ty * 12 + tm) - (sy * 12 + (sm - 1));
+    $("anniv").textContent = months > 0 ? `🎉 今天是在一起的第 ${months} 个月纪念日` : "🎉 今天是我们在一起的日子";
+  } else {
+    if (target < todayMid){ tm++; if (tm > 11){ tm = 0; ty++; } target = new Date(ty, tm, sd); }
+    const months = (ty * 12 + tm) - (sy * 12 + (sm - 1));
+    const left = Math.round((target - todayMid) / 86400000);
+    $("anniv").textContent = `${ty}年${tm + 1}月${sd}日 是第 ${months} 个月纪念 · 还有 ${left} 天`;
+  }
+}
+tickCounter();
+setInterval(tickCounter, 1000);
+
+/* ── 双城时钟 / 时区工具 ── */
+function cityDateStr(tz){
+  return new Intl.DateTimeFormat("en-CA", { timeZone: tz, year:"numeric", month:"2-digit", day:"2-digit" }).format(new Date());
+}
+function cityClock(tz){
+  return new Intl.DateTimeFormat("zh-CN", { timeZone: tz, hour:"2-digit", minute:"2-digit", second:"2-digit", hour12:false }).format(new Date());
+}
+function cityHour(tz){
+  const parts = new Intl.DateTimeFormat("en-GB", { timeZone: tz, hour:"2-digit", minute:"2-digit", hour12:false }).formatToParts(new Date());
+  const h = +parts.find(p => p.type === "hour").value, m = +parts.find(p => p.type === "minute").value;
+  return h + m / 60;
+}
+function tickClocks(){
+  const z = cityClock(CONFIG.myCity.tz), m = cityClock(CONFIG.herCity.tz);
+  $("zjClock").textContent = z; $("zjClock2").textContent = z;
+  $("mosClock").textContent = m; $("mosClock2").textContent = m;
+}
+tickClocks();
+setInterval(tickClocks, 1000);
+
+/* ── 两城距离 ── */
+function haversine(a, b){
+  const R = 6371, r = x => x * Math.PI / 180;
+  const dLat = r(b.lat - a.lat), dLon = r(b.lon - a.lon);
+  const h = Math.sin(dLat/2)**2 + Math.cos(r(a.lat))*Math.cos(r(b.lat))*Math.sin(dLon/2)**2;
+  return Math.round(2 * R * Math.asin(Math.sqrt(h)));
+}
+const DIST = haversine(CONFIG.myCity, CONFIG.herCity);
+$("dist").textContent = `— 相隔 ${DIST} 公里 —`;
+$("footSub").textContent = `MADE OF ${DIST} KM · 5 HOURS APART · ♾ LOVE`;
+
+/* ── 双城天空（签名元素）── */
+const SKY = {
+  night:[ [14,22,42], [52,66,112] ],
+  dawn: [ [247,182,160], [143,168,207] ],
+  day:  [ [121,192,228], [205,234,244] ],
+  dusk: [ [240,141,100], [110,95,160] ],
+};
+const lerp = (a,b,t) => a + (b - a) * t;
+const mixRGB = (c1, c2, t) => [0,1,2].map(i => Math.round(lerp(c1[i], c2[i], t)));
+const css = c => `rgb(${c[0]},${c[1]},${c[2]})`;
+
+function skyFor(h){
+  if (h >= 19.5 || h < 5)  return { cols: SKY.night, night: 1 };
+  if (h < 7){ const t = (h - 5) / 2; return { cols: [mixRGB(SKY.night[0], SKY.dawn[0], t), mixRGB(SKY.night[1], SKY.dawn[1], t)], night: 1 - t }; }
+  if (h < 16.5) return { cols: SKY.day, night: 0 };
+  const t = (h - 16.5) / 3;
+  return { cols: [mixRGB(SKY.dusk[0],SKY.night[0],t), mixRGB(SKY.dusk[1],SKY.night[1],t)], night: t };
+}
+function paintSky(){
+  const zj = skyFor(cityHour(CONFIG.myCity.tz));
+  const mos = skyFor(cityHour(CONFIG.herCity.tz));
+  $("skyZj").style.background  = `linear-gradient(180deg, ${css(zj.cols[0])}, ${css(zj.cols[1])})`;
+  $("skyMos").style.background = `linear-gradient(180deg, ${css(mos.cols[0])}, ${css(mos.cols[1])})`;
+  return { zj: zj.night, mos: mos.night };
+}
+
+/* ── 星空：只在黑夜那一侧亮 ── */
+const canvas = $("stars"), ctx = canvas.getContext("2d");
+let stars = [], W = 0, H = 0;
+function buildStars(){
+  const hero = $("hero");
+  W = canvas.width = hero.clientWidth * devicePixelRatio;
+  H = canvas.height = hero.clientHeight * devicePixelRatio;
+  const n = Math.round(W * H / 14000 / devicePixelRatio);
+  stars = Array.from({ length: n }, () => ({
+    x: Math.random(), y: Math.random() * .92,
+    r: (Math.random() * 1.1 + .4) * devicePixelRatio,
+    p: Math.random() * Math.PI * 2,
+    s: .4 + Math.random() * 1.4,
+  }));
+}
+function drawStars(t, night){
+  ctx.clearRect(0, 0, W, H);
+  for (const st of stars){
+    const local = lerp(night.zj, night.mos, st.x);
+    const tw = reduceMotion ? .8 : .55 + .45 * Math.sin(t / 700 * st.s + st.p);
+    const a = (0.10 + 0.90 * local) * tw;
+    if (a < .03) continue;
+    ctx.globalAlpha = a;
+    ctx.fillStyle = "#FFF6EA";
+    ctx.beginPath();
+    ctx.arc(st.x * W, st.y * H, st.r, 0, 7);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+buildStars();
+let nightState = paintSky();
+addEventListener("resize", () => { buildStars(); nightState = paintSky(); });
+setInterval(() => { nightState = paintSky(); }, 60000);
+if (reduceMotion){
+  drawStars(0, nightState);
+} else {
+  (function loop(t){ drawStars(t, nightState); requestAnimationFrame(loop); })(0);
+}
+
+/* ── 天气 ── */
+const WMO = {
+  0:["晴","☀️","🌙"], 1:["大部晴朗","🌤️","🌜"], 2:["多云","⛅","☁️"], 3:["阴","☁️","☁️"],
+  45:["雾","🌫️","🌫️"], 48:["雾凇","🌫️","🌫️"],
+  51:["毛毛雨","🌦️","🌧️"], 53:["毛毛雨","🌦️","🌧️"], 55:["大雨毛毛","🌧️","🌧️"],
+  61:["小雨","🌦️","🌧️"], 63:["中雨","🌧️","🌧️"], 65:["大雨","🌧️","🌧️"],
+  66:["冻雨","🌧️","🌧️"], 67:["冻雨","🌧️","🌧️"],
+  71:["小雪","🌨️","🌨️"], 73:["中雪","🌨️","🌨️"], 75:["大雪","❄️","❄️"], 77:["雪粒","🌨️","🌨️"],
+  80:["阵雨","🌦️","🌦️"], 81:["阵雨","🌦️","🌦️"], 82:["强阵雨","🌧️","🌧️"],
+  85:["阵雪","🌨️","🌨️"], 86:["阵雪","🌨️","🌨️"],
+  95:["雷阵雨","⛈️","⛈️"], 96:["雷雨伴冰雹","⛈️","⛈️"], 99:["雷雨伴冰雹","⛈️","⛈️"],
+};
+const wx = (code, isDay) => (WMO[code] || ["未知天气","🌙","🌙"])[isDay ? 1 : 2];
+
+const WURL = (lat, lon) =>
+  `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+  `&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,weather_code,wind_speed_10m` +
+  `&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=3`;
+
+const WEEK = ["日","一","二","三","四","五","六"];
+function fillForecast(el, data){
+  el.innerHTML = "";
+  const cityTz = data.timezone;
+  const today = cityDateStr(cityTz);
+  data.daily.time.forEach((t, i) => {
+    const label = t === today ? "今天" : i === 1 ? "明天" : "周" + WEEK[new Date(t + "T12:00:00").getDay()];
+    const hi = Math.round(data.daily.temperature_2m_max[i]);
+    const lo = Math.round(data.daily.temperature_2m_min[i]);
+    el.insertAdjacentHTML("beforeend",
+      `<div class="fc">
+         <div class="fc-day">${label}</div>
+         <div class="fc-emoji">${wx(data.daily.weather_code[i], 1)}</div>
+         <div class="fc-temp">${hi}° <span class="lo">/ ${lo}°</span></div>
+       </div>`);
+  });
+}
+function fillCard(prefix, data){
+  const c = data.current;
+  $(prefix + "Temp").textContent = Math.round(c.temperature_2m);
+  $(prefix + "Emoji").textContent = wx(c.weather_code, c.is_day);
+  $(prefix + "Text").textContent = (WMO[c.weather_code] || ["…"])[0];
+  $(prefix + "Feels").textContent = Math.round(c.apparent_temperature);
+  $(prefix + "Hum").textContent = c.relative_humidity_2m;
+  $(prefix + "Wind").textContent = Math.round(c.wind_speed_10m);
+  fillForecast($(prefix + "Fc"), data);
+}
+function careText(zj, mos){
+  const t = Math.round(mos.current.temperature_2m);
+  const zt = Math.round(zj.current.temperature_2m);
+  const parts = [];
+  if (t <= 0) parts.push(`莫斯科已经 ${t}°C，出门前提醒她多穿一件，围巾已经在路上 🧣`);
+  else if (t <= 10) parts.push(`莫斯科只有 ${t}°C，记得让她喝口热的 ☕`);
+  else parts.push(`莫斯科 ${t}°C，她的天空由这只章鱼代管 🐙`);
+  if (zt >= 28) parts.push(`湛江还是 ${zt}°C 的夏天，我把海风替她收着 🌊`);
+  const zjNight = skyFor(cityHour(CONFIG.myCity.tz)).night;
+  const mosNight = skyFor(cityHour(CONFIG.herCity.tz)).night;
+  if (zjNight > .5 && mosNight > .5) parts.push("两边都是深夜了，梦里也要见一面 🌙");
+  else if (zjNight < .5 && mosNight < .5) parts.push("难得两边都是白天，晒着同一个太阳 ☀️");
+  else parts.push(`时差 5 小时，${zjNight > .5 ? "我这边天黑了，她的白天刚开始" : "她的夜晚才刚开始，我替她看着这边天亮"}`);
+  return parts.join("　");
+}
+Promise.all([
+  fetch(WURL(CONFIG.myCity.lat, CONFIG.myCity.lon)).then(r => r.json()),
+  fetch(WURL(CONFIG.herCity.lat, CONFIG.herCity.lon)).then(r => r.json()),
+]).then(([zj, mos]) => {
+  fillCard("zj", zj); fillCard("mos", mos);
+  $("careMsg").textContent = careText(zj, mos);
+}).catch(() => {
+  ["zj", "mos"].forEach(p => { $(p + "Emoji").textContent = "🌙"; $(p + "Text").textContent = "天气离线中"; });
+  $("careMsg").textContent = "天气暂时连不上，但想你这件事永远在线。";
+});
+
+/* ── 照片墙 ── */
+const PLACEHOLDER = [
+  ["🌇","渐变与晚霞"], ["🍜","一起吃过的"], ["🐻","抱抱库存"], ["🚲","走过的路"], ["❄️","莫斯科的雪"], ["🎵","循环的情歌"],
+];
+const gallery = $("gallery");
+if (CONFIG.photos.length){
+  CONFIG.photos.forEach((src, i) => {
+    const cap = CONFIG.photoCaptions[i] || `第 ${i + 1} 张`;
+    gallery.insertAdjacentHTML("beforeend",
+      `<figure class="polaroid" style="--tilt:${(i % 2 ? 1 : -1) * (2 + (i % 3))}deg;--drop:${(i % 3) * 8}px">
+         <div class="ph-img"><img src="${src}" alt="${cap}" loading="lazy"></div>
+         <figcaption class="ph-cap">${cap}</figcaption>
+       </figure>`);
+  });
+  $("galleryHint").textContent = "轻触可放平看清楚";
+} else {
+  PLACEHOLDER.forEach(([emoji, cap], i) => {
+    const hue = [200, 25, 340, 150, 220, 275][i];
+    gallery.insertAdjacentHTML("beforeend",
+      `<figure class="polaroid" style="--tilt:${(i % 2 ? 1 : -1) * (2 + (i % 3))}deg;--drop:${(i % 3) * 8}px">
+         <div class="ph-img" style="background:linear-gradient(160deg,hsl(${hue} 45% 72%),hsl(${hue + 30} 40% 88%))">
+           <span class="ph-emoji">${emoji}</span>
+         </div>
+         <figcaption class="ph-cap">${cap} · 贴照片处</figcaption>
+       </figure>`);
+  });
+  $("galleryHint").textContent = "把照片文件放进同一文件夹，在 CONFIG 里填上文件名就能贴上来";
+}
+
+/* ── 戳章鱼 ── */
+let lastNote = -1;
+$("pokeBtn").addEventListener("click", ev => {
+  const btn = $("pokeBtn");
+  btn.classList.remove("wiggle"); void btn.offsetWidth; btn.classList.add("wiggle");
+  let i;
+  do { i = Math.floor(Math.random() * CONFIG.loveNotes.length); } while (i === lastNote && CONFIG.loveNotes.length > 1);
+  lastNote = i;
+  const note = $("pokeNote");
+  note.classList.remove("show"); void note.offsetWidth;
+  note.textContent = "「 " + CONFIG.loveNotes[i] + " 」";
+  note.classList.add("show");
+  const r = btn.getBoundingClientRect();
+  burst(r.left + r.width / 2, r.top + r.height / 2, 8);
+});
+
+/* ── 心动粒子 ── */
+const HEARTS = ["❤️","🧡","🐙","✨","💗"];
+function burst(x, y, n){
+  if (reduceMotion) return;
+  for (let i = 0; i < n; i++){
+    const s = document.createElement("span");
+    s.className = "heart";
+    s.textContent = HEARTS[Math.floor(Math.random() * HEARTS.length)];
+    const ang = Math.random() * Math.PI * 2;
+    s.style.left = x - 9 + Math.cos(ang) * 26 + "px";
+    s.style.top = y - 9 + Math.sin(ang) * 12 + "px";
+    s.style.setProperty("--dx", (Math.random() * 70 - 35) + "px");
+    s.style.setProperty("--s", (13 + Math.random() * 12) + "px");
+    document.body.appendChild(s);
+    setTimeout(() => s.remove(), 1000);
+  }
+}
+$("hero").addEventListener("click", ev => {
+  if (ev.target.closest("a,button")) return;
+  burst(ev.clientX, ev.clientY, 6);
+});
+
+/* ── 滚动浮现 ── */
+if (!reduceMotion && "IntersectionObserver" in window){
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting){ e.target.classList.add("in"); io.unobserve(e.target); }
+  }), { threshold: .12 });
+  document.querySelectorAll(".reveal").forEach(el => io.observe(el));
+} else {
+  document.querySelectorAll(".reveal").forEach(el => el.classList.add("in"));
+}
+</script>
+</body>
+</html>
